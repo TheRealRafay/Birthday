@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Happy Birthday Amna</title>
+<style>
+  html,body{height:100%;margin:0;background:#000;display:flex;align-items:center;justify-content:center;font-family:system-ui,Segoe UI,Roboto;}
+  .phone {
+    width: 360px; height: 640px;
+    overflow:hidden; border-radius:24px; box-shadow:0 20px 50px rgba(0,0,0,.6);
+    position:relative; background:#111;
+  }
+  canvas#stage{ position:absolute; left:0; top:0; width:100%; height:100%; display:block; }
+  .controls { position:absolute; left:8px; bottom:8px; z-index:40; display:flex; gap:8px; }
+  button{ padding:8px 12px; border-radius:8px; border:0; background:#1db954;color:white; font-weight:600; cursor:pointer;}
+  .caption {
+    position:absolute; left:12px; right:12px; bottom:80px; z-index:30; color:#fff; text-align:center;
+    font-size:18px; text-shadow:0 6px 18px rgba(0,0,0,.6);
+  }
+  .badge {
+    position:absolute; right:12px; top:12px; padding:6px 10px; background:rgba(255,255,255,.06); color:#fff; border-radius:999px;
+    font-weight:700; font-size:12px; backdrop-filter: blur(6px);
+  }
+  .overlay-text{
+    position:absolute; left:12px; right:12px; top:36%; text-align:center; z-index:35; pointer-events:none;
+    font-size:28px; color:#ffd8d8; font-weight:800; text-shadow:0 8px 30px rgba(0,0,0,.5);
+  }
+</style>
+</head>
+<body>
+<div class="phone" id="phone">
+  <canvas id="stage" width="360" height="640"></canvas>
+  <div class="badge">Happy Birthday 🎉</div>
+  <div class="overlay-text" id="overlay">Happy Birthday — Amna</div>
+  <div class="caption" id="caption">Wishing you lots of smiles and cake 🍰</div>
+  <div class="controls">
+    <button id="playBtn">Play</button>
+    <button id="pauseBtn">Pause</button>
+    <button id="muteBtn">Mute</button>
+  </div>
+</div>
+
+<audio id="music" src="HAPPY Birthday Song, Happy Birthday to You.mp4" preload="auto" loop></audio>
+
+<script>
+// === CONFIG ===
+// === CONFIG ===
+const images = Array.from({length:33},(_,i)=>`img${i+1}.jpg`);
+
+// 2 seconds per slide (2000 ms)
+const durations = Array(images.length).fill(2000);
+
+const texts = [
+  'Happy Birthday, Amna 🎂',
+  'Wishing you endless joy 💫',
+  'Stay blessed & keep shining ✨',
+  'May your dreams come true 🌈',
+  'Keep smiling & inspiring 🌸',
+  'Another year wiser & happier 🎈',
+  'Here’s to laughter, love & success 💕',
+  '— from Rafay ❤️',
+  'You deserve all the happiness 💖',
+  'Hope this year brings you magic ✨',
+  'This day is all about you 🫶',
+  'Keep chasing your dreams 🏆',
+  'Have a day full of smiles 😄',
+  'Enjoy every moment 🎊',
+  'Your kindness inspires us 💕',
+  'May success follow you always 🏅',
+  'Best wishes from your friends 🤗',
+  'Today we celebrate YOU 🥳',
+  'Be happy and shine bright ✨',
+  'We’re so proud of you ❤️',
+  'Sending hugs and prayers 🤲',
+  'Make wonderful memories 📸',
+  'Keep dreaming big 🌟',
+  'Always stay cheerful 🌸',
+  'The world is lucky to have you 🌍',
+  'Celebrate and dance 💃',
+  'Blow the candles, make a wish 🕯️',
+  'Enjoy your favorite cake 🍰',
+  'Thanks for being amazing 🙌',
+  'Here’s to another great year 🥂',
+  'With love from the whole family ❤️',
+  'Happy moments ahead 🌈',
+  'Happy Birthday Moti🤣 🎂'
+];
+
+const caps = [
+  'Cut the cake and make a wish!',
+  'You are the sunshine of our family ☀️',
+  'Always believe in yourself 🌟',
+  'Never stop chasing your goals 🏆',
+  'We’re proud of you 💖',
+  'Celebrate your special day 🎊',
+  'Cheers to more memories together 🥂',
+  'Have the best day ever ❤️',
+  'May life always treat you kindly 🌸',
+  'Let happiness surround you always 💛',
+  'Big cheers for you 🥳',
+  'With love & hugs from Rafay 🤗',
+  'Special blessings from all of us 🤲',
+  'Your smile brightens our days 😍',
+  'This is your time to shine ✨',
+  'We are thankful for you 💖',
+  'Stay positive, stay strong 💪',
+  'Be bold, be brave, be you 💫',
+  'More adventures are coming 🌍',
+  'Good vibes only ✨',
+  'This year is your year 🏆',
+  'Another candle, another wish 🕯️',
+  'We’re cheering for you 🎉',
+  'Hugs, smiles and happiness 🤗',
+  'We love you to the moon & back 🌙',
+  'Your journey is beautiful 💐',
+  'Let today be unforgettable 📸',
+  'Time to party 🥳',
+  'Feel the love around you ❤️',
+  'Blessings from everyone 🌸',
+  'A toast to you 🥂',
+  'Birthday vibes forever 🎂',
+  'Stay blessed & happy always 🤍'
+];
+
+
+// ==============
+
+const canvas = document.getElementById('stage');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+let imgs = [], loaded = 0;
+
+images.forEach((src,i)=>{
+  const im = new Image();
+  im.src = src;
+  im.onload = ()=>{ imgs[i]=im; loaded++; if(loaded===images.length) start(); };
+  im.onerror = ()=>{ console.error('Error loading',src); loaded++; if(loaded===images.length) start(); };
+});
+
+// hearts
+const hearts = [];
+function spawnHeart(){
+  hearts.push({
+    x: Math.random()*W,
+    y: H + 20,
+    r: 6+Math.random()*10,
+    vy: 0.5 + Math.random()*1.2,
+    vx: (Math.random()-0.5)*0.6,
+    rot: Math.random()*Math.PI*2,
+    alive: 0
+  });
+  if(hearts.length>60) hearts.shift();
+}
+function drawHeart(ctx,x,y,r,rot,alpha=1){
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.rotate(rot);
+  ctx.scale(r/20,r/20);
+  ctx.globalAlpha = alpha;
+  ctx.beginPath();
+  ctx.moveTo(0,0);
+  ctx.bezierCurveTo(0,-8, -20,-8, -20,6);
+  ctx.bezierCurveTo(-20,22, -2,30, 0,44);
+  ctx.bezierCurveTo(2,30, 20,22, 20,6);
+  ctx.bezierCurveTo(20,-8, 0,-8, 0,0);
+  ctx.closePath();
+  ctx.fillStyle = '#ff4566';
+  ctx.fill();
+  ctx.restore();
+}
+
+// slideshow
+let index = 0, startTime=0, running=false;
+const music = document.getElementById('music');
+
+function start(){
+  index=0; startTime = performance.now(); running = true;
+  requestAnimationFrame(loop);
+}
+
+function loop(ts){
+  if(!running) return;
+  const t = ts - startTime;
+  let cursor=0, i=0;
+  while(i < images.length && t > cursor + durations[i]){ cursor += durations[i]; i++; }
+  index = Math.min(i, images.length-1);
+  const localT = Math.max(0, t - cursor);
+  const frac = Math.min(1, localT / durations[index]);
+
+  ctx.clearRect(0,0,W,H);
+  const im = imgs[index];
+  if(im){
+    const zoom = 1 + 0.12*frac;
+    const panX = 0.08 * (index%2===0 ? frac : (1-frac));
+    const sw = im.width / zoom;
+    const sh = im.height / zoom;
+    const sx = Math.max(0, (im.width - sw) * panX);
+    const sy = Math.max(0, (im.height - sh) * 0.12);
+    ctx.drawImage(im, sx, sy, sw, sh, 0, 0, W, H);
+  } else {
+    ctx.fillStyle = '#333'; ctx.fillRect(0,0,W,H);
+  }
+
+  // fade next slide
+  if(index < images.length-1){
+    const nextIm = imgs[index+1];
+    const transitionStart = durations[index] - 500;
+    if(localT > transitionStart){
+      const tr = (localT - transitionStart)/500;
+      if(nextIm){
+        const zoom2 = 1 + 0.12*(tr);
+        const sw2 = nextIm.width / zoom2;
+        const sh2 = nextIm.height / zoom2;
+        const sx2 = Math.max(0, (nextIm.width - sw2) * (1-tr));
+        const sy2 = Math.max(0, (nextIm.height - sh2) * 0.12);
+        ctx.globalAlpha = tr;
+        ctx.drawImage(nextIm, sx2, sy2, sw2, sh2, 0, 0, W, H);
+        ctx.globalAlpha = 1;
+      }
+    }
+  }
+
+  document.getElementById('overlay').textContent = texts[index] || texts[texts.length-1];
+  document.getElementById('caption').textContent = caps[index] || caps[caps.length-1];
+
+  if(Math.random() < 0.14) spawnHeart();
+  for(let i=0;i<hearts.length;i++){
+    const h = hearts[i];
+    h.y -= h.vy; h.x += h.vx; h.rot += 0.02; h.alive += 0.02;
+    const alpha = Math.max(0, Math.min(1, 1 - (h.alive/4)));
+    drawHeart(ctx, h.x, h.y, h.r, h.rot, alpha);
+  }
+
+  if(t < durations.reduce((a,b)=>a+b,0)){
+    requestAnimationFrame(loop);
+  } else {
+    running = false;
+  }
+}
+
+// controls
+document.getElementById('playBtn').addEventListener('click', ()=>{
+  if(!running){ start(); }
+  music.play().catch(()=>{});
+});
+document.getElementById('pauseBtn').addEventListener('click', ()=>{
+  running=false; music.pause();
+});
+document.getElementById('muteBtn').addEventListener('click', ()=>{
+  music.muted = !music.muted;
+  document.getElementById('muteBtn').textContent = music.muted ? 'Unmute' : 'Mute';
+});
+</script>
+</body>
+</html>
